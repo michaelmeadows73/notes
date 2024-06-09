@@ -3,7 +3,7 @@ using NotesApi.Exceptions;
 
 namespace NotesApi.Services;
 
-public class NotesService : INotesService
+public class InMemoryNotesService : INotesService
 {
     private static IList<NoteDto> _notes = new List<NoteDto>
     {
