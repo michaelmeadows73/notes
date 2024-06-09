@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using NotesApi.Dtos;
+using NotesApi.Exceptions;
+using NotesApi.Services;
 
 namespace NotesApi.Controllers;
 
@@ -7,81 +9,64 @@ namespace NotesApi.Controllers;
 [Route("notes")]
 public class NotesController : ControllerBase
 {
-    private static IList<NoteDto> _notes = new List<NoteDto>
+    private readonly INotesService _notesService;
+    
+    public NotesController(INotesService notesService)
     {
-        new NoteDto
-        {
-            NoteIdentifier = Guid.NewGuid(),
-            NoteText = "A very fine man."
-        }
-    };
-
-    private readonly ILogger<NotesController> _logger;
-
-    public NotesController(ILogger<NotesController> logger)
-    {
-        _logger = logger;
+        _notesService = notesService;
     }
 
     [HttpGet]
     public ActionResult<IEnumerable<NoteDto>> Get()
     {
-        _logger.LogInformation("Retrieving notes.");
-
-        return Ok(_notes);
+        return Ok(_notesService.GetNotes());
     }
 
     [HttpGet("{noteIdentifier}")]
     public ActionResult<NoteDto> Get(Guid noteIdentifier) 
     {
-        NoteDto noteDto = _notes.FirstOrDefault(n => n.NoteIdentifier == noteIdentifier);
-
-        if (noteDto == null)
+        try
+        {
+            return Ok(_notesService.GetNote(noteIdentifier));
+        }
+        catch (NoteNotFoundException)
         {
             return NotFound();
         }
-
-        return Ok(noteDto);
     }
 
     [HttpPost]
     public ActionResult<NoteDto> Post(NoteCreateUpdateDto noteCreateUpdateDto) 
     {
-        NoteDto noteDto = new NoteDto { NoteIdentifier = Guid.NewGuid(), NoteText = noteCreateUpdateDto.NoteText };
-
-        _notes.Add(noteDto);
-
-        return Ok(noteDto);
+        return Ok(_notesService.CreateNote(noteCreateUpdateDto));
     }
 
     [HttpPut("{noteIdentifier}")]
     public ActionResult<NoteDto> Put(Guid noteIdentifier, NoteCreateUpdateDto noteCreateUpdateDto) 
     {
-        NoteDto noteDto = _notes.FirstOrDefault(n => n.NoteIdentifier == noteIdentifier);
-
-        if (noteDto == null)
+        try
         {
-            return NotFound();   
+            return Ok(_notesService.UpdateNote(noteIdentifier, noteCreateUpdateDto));
         }
-
-        noteDto.NoteText = noteCreateUpdateDto.NoteText;
-
-        return Ok(noteDto);
+        catch (NoteNotFoundException)
+        {
+            return NotFound();
+        }
     }
 
 
     [HttpDelete("{noteIdentifier}")]
     public ActionResult Delete(Guid noteIdentifier) 
     {
-        NoteDto noteDto = _notes.FirstOrDefault(n => n.NoteIdentifier == noteIdentifier);
+        try
+        {
+            _notesService.DeleteNote(noteIdentifier);
 
-        if (noteDto == null)
+            return NoContent();
+        }
+        catch (NoteNotFoundException)
         {
             return NotFound();
         }
-
-        _notes.Remove(noteDto);
-    
-        return Ok();
     }    
 }
